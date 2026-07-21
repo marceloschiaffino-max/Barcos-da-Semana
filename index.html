@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Barcos da Semana</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root{--bg:#0d2d39;--panel:#174b5c;--text:#f7f3ec;--muted:#a9bac1;--accent:#e28d49;--line:rgba(255,255,255,.15)}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+    .app{max-width:920px;margin:auto;padding:20px 14px 40px}.eyebrow{color:var(--accent);font-weight:800;letter-spacing:.16em;font-size:13px}
+    h1{font-family:Georgia,serif;font-size:clamp(38px,7vw,64px);margin:8px 0 24px}.week{display:grid;grid-template-columns:62px 1fr 62px;gap:10px;align-items:center;padding-bottom:22px;border-bottom:1px solid var(--line)}
+    button{font:inherit;border:0;cursor:pointer}.nav{height:62px;border-radius:16px;background:#173f4e;color:white;font-size:34px}.weekText{text-align:center}.weekText b{font-size:26px}.weekText span{display:block;color:var(--muted);margin-top:4px}
+    .days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:24px 0}.days button{padding:14px 6px;border-radius:18px;background:#18495a;color:var(--muted)}.days button.active{background:var(--accent);color:#171717}.days strong{display:block;font-size:25px}.days small{display:block;margin-top:8px;font-size:14px}
+    .status{margin:8px 0 16px;color:var(--muted);font-size:13px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:var(--panel);border-radius:22px;padding:18px;box-shadow:0 14px 35px rgba(0,0,0,.18)}
+    .card h2{color:var(--accent);margin:0 0 12px}.boat{padding:16px 0;border-top:1px solid var(--line)}.boat:first-of-type{border-top:0}.boatTitle{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}.boatTitle span{color:var(--muted);font-size:12px}
+    .seats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.single .seats{grid-template-columns:1fr}.seat{display:flex}.side{min-width:42px;display:grid;place-items:center;background:rgba(255,255,255,.06);border:1px solid var(--line);border-right:0;border-radius:12px 0 0 12px;color:var(--accent);font-weight:bold}
+    input{width:100%;min-width:0;padding:13px 14px;border-radius:12px;border:1px dashed rgba(255,255,255,.23);background:rgba(255,255,255,.03);color:white;outline:none}.side+input{border-radius:0 12px 12px 0}input::placeholder{color:#abc0c8;font-style:italic}input:focus{border-style:solid;border-color:var(--accent)}
+    input.filled{background:var(--accent);color:#171717;border-style:solid;border-color:var(--accent);font-weight:700}
+    input.filled::placeholder{color:#171717}
+    .boat.complete .boatTitle b,.boat.complete .boatTitle span{color:var(--accent)}
+    .boat.complete{border-top-color:rgba(226,141,73,.55)}
+    .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.actions button{padding:11px 13px;border-radius:12px;background:#173f4e;color:white;border:1px solid var(--line)}.actions .primary{background:var(--accent);color:#171717;font-weight:bold}.actions .danger{color:#ffd2d2}.note{text-align:center;color:var(--muted);font-size:13px;margin-top:18px}
+    .msg{display:none;margin:12px 0;padding:11px 13px;border-radius:12px;background:rgba(101,194,143,.13)}.msg.show{display:block}.msg.error{background:rgba(216,93,93,.18)}
+
+    .snapshot{position:fixed;left:-100000px;top:0;width:1080px;background:var(--bg);color:var(--text);padding:54px;font-family:Arial,sans-serif}
+    .snapshotHeader{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:24px;border-bottom:2px solid var(--line);margin-bottom:28px}
+    .snapshotEyebrow{color:var(--accent);font-weight:800;letter-spacing:.16em;font-size:18px}
+    .snapshotTitle{font-family:Georgia,serif;font-size:58px;margin:8px 0 0}
+    .snapshotPeriod{text-align:right}.snapshotPeriod b{display:block;font-size:28px}.snapshotPeriod span{display:block;color:var(--muted);font-size:18px;margin-top:6px}
+    .snapshotDays{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+    .snapshotDay{background:var(--panel);border-radius:24px;padding:24px;box-shadow:0 14px 35px rgba(0,0,0,.18)}
+    .snapshotDayHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .snapshotDayHeader b{font-family:Georgia,serif;font-size:34px}.snapshotDayHeader span{background:var(--accent);color:#171717;border-radius:999px;padding:8px 13px;font-weight:800;font-size:17px}
+    .snapshotTime{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+    .snapshotTime:first-of-type{margin-top:0;padding-top:0;border-top:0}
+    .snapshotTime h3{color:var(--accent);font-size:25px;margin:0 0 13px}
+    .snapshotBoat{margin:10px 0 0}.snapshotBoatTitle{display:flex;justify-content:space-between;gap:12px;margin-bottom:7px}
+    .snapshotBoatTitle b{font-size:18px}.snapshotBoatTitle span{color:var(--muted);font-size:15px}
+    .snapshotNames{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .snapshotNames.single{grid-template-columns:1fr}
+    .snapshotName{min-height:42px;display:flex;align-items:center;border-radius:10px;padding:9px 11px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.22);color:#c1d0d5;font-style:italic}
+    .snapshotName.filled{background:var(--accent);border-style:solid;border-color:var(--accent);color:#171717;font-style:normal;font-weight:800}
+    .snapshotSide{display:inline-grid;place-items:center;min-width:34px;margin-right:8px;color:var(--accent);font-weight:800}
+    .snapshotName.filled .snapshotSide{color:#171717}
+    .snapshotFooter{margin-top:24px;text-align:center;color:var(--muted);font-size:15px}
+
+    @media(max-width:720px){.cards{grid-template-columns:1fr}}@media(max-width:420px){.seats{grid-template-columns:1fr}.actions{display:grid;grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+<main class="app">
+  <div class="eyebrow">ESCALA SEMANAL</div><h1>Barcos da Semana</h1>
+  <section class="week"><button class="nav" id="prev">‹</button><div class="weekText"><b id="range"></b><span id="month"></span></div><button class="nav" id="next">›</button></section>
+  <nav class="days" id="days"></nav><div class="status" id="status">Conectando…</div><div id="msg" class="msg"></div><section class="cards" id="cards"></section>
+  <div class="actions"><button id="copyPrev">Copiar semana anterior</button><button id="reload">Atualizar</button><button class="primary" id="makeImage">Gerar imagem da semana</button><button class="danger" id="clear">Limpar semana</button></div>
+  <p class="note">Na Caravela, BB/BE indicam apenas os bordos, não voga ou proa.</p>
+</main>
+<datalist id="names"></datalist>
+<div id="snapshot" class="snapshot" aria-hidden="true"></div>
+<script>
+  const SUPABASE_URL = "https://gvomrvdoxcvgvvttpnxq.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_n4kxHGuW2UAHygJLZVyH1A_qjFmorha";
+
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const DAYS=[{k:'tue',s:'3ª',l:'Terça-feira',o:1},{k:'wed',s:'4ª',l:'Quarta-feira',o:2},{k:'thu',s:'5ª',l:'Quinta-feira',o:3},{k:'fri',s:'6ª',l:'Sexta-feira',o:4}];
+  const TIMES=['06:30','07:30'];
+  const BOATS=[{k:'4x',l:'4x',n:4},{k:'2x',l:'2x',n:2},{k:'skiff-yellow',l:'Skiff Amarelo',n:1},{k:'skiff-red',l:'Skiff Vermelho',n:1},{k:'caravela',l:'Caravela',n:4,sides:['BB','BE','BB','BE']}];
+  let monday=getMonday(new Date()), active='tue', values={}, timers={};
+  const $=id=>document.getElementById(id);
+  function getMonday(d){d=new Date(d);const day=d.getDay(),diff=day===0?-6:1-day;d.setDate(d.getDate()+diff);d.setHours(0,0,0,0);return d}
+  function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x} function iso(d){return d.toISOString().slice(0,10)}
+  function fmt(d){return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} function slot(d,t,b,i){return `${d}|${t}|${b}|${i}`}
+  function status(t){$('status').textContent=t} function message(t,e=false){$('msg').textContent=t;$('msg').className='msg show'+(e?' error':'');setTimeout(()=>$('msg').className='msg',3500)}
+  function renderHead(){ $('range').textContent=`${fmt(monday)} a ${fmt(addDays(monday,4))}`;$('month').textContent=monday.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});$('days').innerHTML='';DAYS.forEach(d=>{const b=document.createElement('button');b.className=active===d.k?'active':'';b.innerHTML=`<strong>${d.s}</strong><small>${fmt(addDays(monday,d.o))}</small>`;b.onclick=()=>{active=d.k;renderHead();render()};$('days').appendChild(b)})}
+  function render(){
+    $('cards').innerHTML='';
+    TIMES.forEach(t=>{
+      const c=document.createElement('article');
+      c.className='card';
+      c.innerHTML=`<h2>${t.replace(':','h')}</h2>`;
+
+      BOATS.forEach(b=>{
+        const filledSeats=Array.from({length:b.n},(_,i)=>values[slot(active,t,b.k,i)]||'')
+          .filter(name=>name.trim()).length;
+
+        const box=document.createElement('section');
+        box.className='boat'+(b.n===1?' single':'')+(filledSeats===b.n?' complete':'');
+        box.innerHTML=`<div class="boatTitle"><b>${b.l}</b><span>${filledSeats}/${b.n}</span></div><div class="seats"></div>`;
+
+        const seats=box.querySelector('.seats');
+
+        for(let i=0;i<b.n;i++){
+          const id=slot(active,t,b.k,i);
+          const lab=document.createElement('label');
+          lab.className='seat';
+
+          if(b.sides){
+            const s=document.createElement('span');
+            s.className='side';
+            s.textContent=b.sides[i];
+            lab.appendChild(s);
+          }
+
+          const inp=document.createElement('input');
+          inp.placeholder='Nome do atleta';
+          inp.setAttribute('list','names');
+          inp.value=values[id]||'';
+
+          if(inp.value.trim()){
+            inp.classList.add('filled');
+          }
+
+          inp.oninput=e=>{
+            values[id]=e.target.value;
+
+            if(e.target.value.trim()){
+              e.target.classList.add('filled');
+            }else{
+              e.target.classList.remove('filled');
+            }
+
+            clearTimeout(timers[id]);
+            timers[id]=setTimeout(()=>save(active,t,b,i,e.target.value),700);
+          };
+
+          inp.onblur=e=>save(active,t,b,i,e.target.value);
+          lab.appendChild(inp);
+          seats.appendChild(lab);
+        }
+
+        c.appendChild(box);
+      });
+
+      $('cards').appendChild(c);
+    });
+  }
+  async function load(){status('Carregando…');const {data,error}=await db.from('boat_assignments').select('*').eq('week_start',iso(monday));if(error){status('Erro');message(error.message,true);return}values={};(data||[]).forEach(r=>values[slot(r.day_key,r.time_key,r.boat_key,r.seat_index)]=r.athlete_name||'');render();status('Online')}
+  async function save(day,time,boat,index,raw){const name=raw.trim().replace(/\s+/g,' '),id=slot(day,time,boat.k,index);if(name){const dup=Object.entries(values).find(([oid,on])=>{if(oid===id)return false;const [d,t]=oid.split('|');return d===day&&t===time&&on.trim().toLowerCase()===name.toLowerCase()});if(dup){message(`${name} já está escalado neste horário.`,true);return}}status('Salvando…');let r;if(!name)r=await db.from('boat_assignments').delete().match({week_start:iso(monday),day_key:day,time_key:time,boat_key:boat.k,seat_index:index});else r=await db.from('boat_assignments').upsert({week_start:iso(monday),day_key:day,time_key:time,boat_key:boat.k,seat_index:index,side:boat.sides?boat.sides[index]:null,athlete_name:name,updated_at:new Date().toISOString()},{onConflict:'week_start,day_key,time_key,boat_key,seat_index'});if(r.error){status('Erro');message(r.error.message,true)}else{values[id]=name;status('Salvo');render()}}
+  async function copyPrev(){if(!confirm('Copiar a semana anterior e substituir a atual?'))return;const prev=iso(addDays(monday,-7)),cur=iso(monday);const {data,error}=await db.from('boat_assignments').select('*').eq('week_start',prev);if(error)return message(error.message,true);await db.from('boat_assignments').delete().eq('week_start',cur);if(data?.length){const rows=data.map(({id,created_at,...r})=>({...r,week_start:cur,updated_at:new Date().toISOString()}));const res=await db.from('boat_assignments').insert(rows);if(res.error)return message(res.error.message,true)}load();message('Semana anterior copiada.')}
+  async function clearWeek(){if(!confirm('Apagar toda a escala desta semana?'))return;const {error}=await db.from('boat_assignments').delete().eq('week_start',iso(monday));if(error)return message(error.message,true);values={};render();message('Semana limpa.')}
+  function buildSnapshot(){
+    const snap=$('snapshot');
+    const monthLabel=monday.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    snap.innerHTML=`
+      <div class="snapshotHeader">
+        <div>
+          <div class="snapshotEyebrow">ESCALA SEMANAL</div>
+          <div class="snapshotTitle">Barcos da Semana</div>
+        </div>
+        <div class="snapshotPeriod">
+          <b>${fmt(monday)} a ${fmt(addDays(monday,4))}</b>
+          <span>${monthLabel}</span>
+        </div>
+      </div>
+      <div class="snapshotDays"></div>
+      <div class="snapshotFooter">BB/BE indicam apenas os bordos da Caravela.</div>
+    `;
+
+    const grid=snap.querySelector('.snapshotDays');
+
+    DAYS.forEach(d=>{
+      const day=document.createElement('section');
+      day.className='snapshotDay';
+      day.innerHTML=`
+        <div class="snapshotDayHeader">
+          <b>${d.l}</b>
+          <span>${fmt(addDays(monday,d.o))}</span>
+        </div>
+      `;
+
+      TIMES.forEach(t=>{
+        const time=document.createElement('div');
+        time.className='snapshotTime';
+        time.innerHTML=`<h3>${t.replace(':','h')}</h3>`;
+
+        BOATS.forEach(b=>{
+          const names=Array.from({length:b.n},(_,i)=>(values[slot(d.k,t,b.k,i)]||'').trim());
+          const filled=names.filter(Boolean).length;
+
+          const boat=document.createElement('div');
+          boat.className='snapshotBoat';
+          boat.innerHTML=`
+            <div class="snapshotBoatTitle">
+              <b>${b.l}</b>
+              <span>${filled}/${b.n}</span>
+            </div>
+            <div class="snapshotNames${b.n===1?' single':''}"></div>
+          `;
+
+          const namesBox=boat.querySelector('.snapshotNames');
+
+          names.forEach((name,i)=>{
+            const row=document.createElement('div');
+            row.className='snapshotName'+(name?' filled':'');
+            row.innerHTML=`${b.sides?`<span class="snapshotSide">${b.sides[i]}</span>`:''}<span>${name||'Vaga'}</span>`;
+            namesBox.appendChild(row);
+          });
+
+          time.appendChild(boat);
+        });
+
+        day.appendChild(time);
+      });
+
+      grid.appendChild(day);
+    });
+  }
+
+  async function generateImage(){
+    try{
+      status('Gerando imagem…');
+      buildSnapshot();
+
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+      const canvas=await html2canvas($('snapshot'),{
+        backgroundColor:'#0d2d39',
+        scale:1,
+        useCORS:true,
+        logging:false,
+        width:1080,
+        windowWidth:1080
+      });
+
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png',1));
+      if(!blob)throw new Error('Não foi possível criar a imagem.');
+
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=`barcos-${iso(monday)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+      status('Online');
+      message('Imagem da semana gerada.');
+    }catch(error){
+      status('Erro');
+      message(error.message||'Não foi possível gerar a imagem.',true);
+    }
+  }
+
+  async function loadNames(){const {data}=await db.from('boat_assignments').select('athlete_name').neq('athlete_name','').limit(2000);const unique=[...new Set((data||[]).map(x=>x.athlete_name).filter(Boolean))].sort();$('names').innerHTML='';unique.forEach(n=>{const o=document.createElement('option');o.value=n;$('names').appendChild(o)})}
+  $('prev').onclick=()=>{monday=addDays(monday,-7);renderHead();load()};$('next').onclick=()=>{monday=addDays(monday,7);renderHead();load()};$('reload').onclick=load;$('copyPrev').onclick=copyPrev;$('clear').onclick=clearWeek;$('makeImage').onclick=generateImage;
+  renderHead();render();load();loadNames();
+</script>
+</body>
+</html>
